@@ -1,0 +1,11 @@
+package(default_visibility = ["//visibility:public"])
+
+load(":def.bzl", "workspace_status_environment")
+
+exports_files([
+    "convert.sh",
+])
+
+workspace_status_environment(
+    name = "workspace_status_environment",
+)

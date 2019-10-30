@@ -2,17 +2,18 @@
 
 set -o errexit -o nounset
 
-build_dir="tmp/build/${PACKAGE_DIR}"
+build_dir="tmp/build/{PACKAGE_DIR}"
 mkdir -p "${build_dir}"
-cp -L -R "${PACKAGE_DIR}"/* "${build_dir}"
+cp -L -R "{PACKAGE_DIR}"/* "${build_dir}"
 
-for t in ${TARS}; do
+# shellcheck disable=SC1083
+for t in {TARS}; do
   tar xf "${t}" -C "${build_dir}"
 done
 
-"${HELM}" init --client-only > /dev/null
-"${HELM}" package "${build_dir}" \
-  --version="${CHART_VERSION}" \
-  --app-version="${APP_VERSION}" > /dev/null
+"{HELM}" init --client-only > /dev/null
+"{HELM}" package "${build_dir}" \
+  --version="{CHART_VERSION}" \
+  --app-version="{APP_VERSION}" > /dev/null
 
-mv "${OUTPUT_FILENAME}" "${OUTPUT_TGZ}"
+mv "{OUTPUT_FILENAME}" "{OUTPUT_TGZ}"
