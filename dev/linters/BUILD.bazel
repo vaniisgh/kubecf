@@ -1,12 +1,33 @@
-sh_library(
-    name = "chart",
-    data = ["//deploy/helm/kubecf:chart"],
+package(default_visibility = ["//visibility:private"])
+
+load(
+    ":def.bzl",
+    "helmlint",
+    "shellcheck",
+    "yamllint",
 )
 
-sh_test(
-    name = "helm",
-    srcs = ["@helm//helm"],
-    deps = [":chart"],
-    args = ["lint", "$(rootpath :chart)"],
-    size = "small",
+helmlint(
+    name = "helmlint",
+    chart = "//deploy/helm/kubecf:chart",
+)
+
+shellcheck(
+    name = "shellcheck",
+)
+
+load("@subpar//:subpar.bzl", "par_binary")
+load("@yamllint//:requirements.bzl", "all_requirements")
+
+par_binary(
+    name = "_yamllint",
+    srcs = [":yamllint/run_yamllint.py"],
+    main = "yamllint/run_yamllint.py",
+    python_version = "PY3",
+    deps = all_requirements,
+)
+
+yamllint(
+    name = "yamllint",
+    binary = ":_yamllint.par",
 )

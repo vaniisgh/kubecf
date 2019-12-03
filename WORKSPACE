@@ -25,12 +25,19 @@ pip_repositories()
 
 pip3_import(
     name = "yamllint",
-    requirements = "//dev/linters/yamllint:requirements.txt",
+    requirements = "//dev/linters:yamllint/requirements.txt",
 )
 
 load("@yamllint//:requirements.bzl", "pip_install")
 
 pip_install()
+
+http_archive(
+    name = "subpar",
+    sha256 = project.subpar.sha256,
+    strip_prefix = "subpar-{version}".format(version = project.subpar.version),
+    url = "https://github.com/google/subpar/archive/{version}.tar.gz".format(version = project.subpar.version),
+)
 
 http_archive(
     name = "cf_deployment",

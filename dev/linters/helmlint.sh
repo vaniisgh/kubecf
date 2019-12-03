@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 
-set -o errexit -o nounset
+set -o errexit
 
-exec bazel test //dev/linters:helm
+"{helm}" lint -- "{chart}"

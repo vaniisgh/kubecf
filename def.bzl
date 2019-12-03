@@ -120,6 +120,10 @@ project = struct(
         commit = "94677401bc56ed5d756f50b441a6a5c7f735a6d4",
         sha256 = "acbd018f11355ead06b250b352e59824fbb9e77f4874d250d230138231182c1c",
     ),
+    subpar = struct(
+        version = "2.0.0",
+        sha256 = "b80297a1b8d38027a86836dbadc22f55dc3ecad56728175381aa6330705ac10f",
+    ),
     mysql_chart = struct(
         version = "1.3.3",
         sha256 = "9ef4ce3693eb2a7428598f9dae833ee546eac9c105b4005c6d7375c55e33bdff",
