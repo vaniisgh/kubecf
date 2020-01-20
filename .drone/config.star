@@ -65,8 +65,8 @@ def main(ctx):
             network_mode = "host",
         ))
 
-    steps.append(test_step("smoke_tests"))
-    steps.append(test_step("cf_acceptance_tests"))
+    #steps.append(test_step("smoke_tests"))
+    #steps.append(test_step("cf_acceptance_tests"))
     steps.append(test_step("kubecf_redeploy_cats_internetless"))
     steps.append(test_step("cf_acceptance_tests"))
 
