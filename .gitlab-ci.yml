@@ -55,8 +55,7 @@ tests:
 
 publish:chart:
   stage: publish
-  only:
-  - master
+  only: *common_refs
   image:
     name: minio/mc
     entrypoint: [""]
