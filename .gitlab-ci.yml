@@ -33,7 +33,8 @@ build:chart:
 
 tests:
   stage: test
-  only: *common_refs
+  only:
+  - master
   script:
   - /usr/bin/date
   - .gitlab/pipelines/stages/deploy/setup_k8s.sh
