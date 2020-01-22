@@ -1,5 +1,6 @@
 #!/bin/sh
 
+set -x
 set -o errexit -o nounset
 
 mc config host add "s3" "https://s3.amazonaws.com" "${AWS_ACCESS_KEY}" "${AWS_SECRET_KEY}"
