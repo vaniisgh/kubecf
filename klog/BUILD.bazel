@@ -1,0 +1,41 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+package(default_visibility = ["//visibility:public"])
+
+load("@bazel_gazelle//:def.bzl", "gazelle")
+load("//rules/publish:defs.bzl", "publish")
+
+gazelle(
+    name = "gazelle",
+    prefix = "github.com/SUSE/kubecf/klog",
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["main.go"],
+    importpath = "github.com/SUSE/kubecf/klog",
+    deps = ["//cmd/klog:go_default_library"],
+)
+
+platforms = [
+    "linux",
+    "darwin",
+]
+
+[go_binary(
+    name = "klog-{}-amd64".format(platform),
+    embed = [":go_default_library"],
+    goos = platform,
+    goarch = "amd64",
+    pure = "on",
+) for platform in platforms]
+
+publish(
+    name = "publish",
+    data = ["klog-{}-amd64".format(p) for p in platforms],
+)
+
+go_binary(
+    name = "klog",
+    embed = [":go_default_library"],
+)
