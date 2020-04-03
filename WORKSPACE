@@ -3,8 +3,8 @@ workspace(name = "kubecf")
 load(":def.bzl", "project")
 
 local_repository(
-    name = "workspace_status",
-    path = "rules/workspace_status",
+    name = "workspace",
+    path = "rules/workspace",
 )
 
 local_repository(
@@ -51,3 +51,34 @@ pip_install()
 load("@rules_gomplate//:repositories.bzl", "gomplate_repositories")
 
 gomplate_repositories()
+
+load("@workspace//:def.bzl", "workspace_root")
+
+workspace_root(
+    name = "workspace_root",
+)
+
+http_archive(
+    name = "io_bazel_rules_docker",
+    sha256 = "dc97fccceacd4c6be14e800b2a00693d5e8d07f69ee187babfd04a80a9f8e250",
+    strip_prefix = "rules_docker-0.14.1",
+    urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.14.1/rules_docker-v0.14.1.tar.gz"],
+)
+
+load(
+    "@io_bazel_rules_docker//repositories:repositories.bzl",
+    container_repositories = "repositories",
+)
+
+container_repositories()
+
+load(
+    "@io_bazel_rules_docker//repositories:deps.bzl",
+    container_deps = "deps",
+)
+
+container_deps()
+
+load("//:image_repositories.bzl", "image_repositories")
+
+image_repositories()

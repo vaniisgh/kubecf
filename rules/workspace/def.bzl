@@ -71,3 +71,22 @@ workspace_status = rule(
         ),
     },
 )
+
+def _workspace_root_impl(ctx):
+    ctx.file("path", paths.dirname(str(ctx.path(ctx.attr._workspace_root_ref))))
+    build_contents = "\n".join([
+        'package(default_visibility = ["//visibility:public"])',
+        'exports_files(["path"])',
+    ])
+    ctx.file("BUILD.bazel", build_contents)
+
+workspace_root = repository_rule(
+    implementation = _workspace_root_impl,
+    attrs = {
+        "_workspace_root_ref": attr.label(
+            allow_single_file = True,
+            default = "@//:WORKSPACE",
+            doc = "A reference file to locate the workspace root",
+        ),
+    },
+)

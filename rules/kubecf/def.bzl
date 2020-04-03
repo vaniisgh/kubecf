@@ -91,3 +91,57 @@ image_list = rule(
         ),
     },
 )
+
+def _image_cache_generator_impl(ctx):
+    script_name = paths.basename(ctx.file._script_tmpl.path).replace(".tmpl", "")
+    script = ctx.actions.declare_file(script_name)
+    ctx.actions.expand_template(
+        output = script,
+        substitutions = {
+            "[[image_list_file]]": ctx.file.image_list.short_path,
+            "[[docker]]": ctx.executable._docker.short_path,
+            "[[workspace_root_file]]": ctx.file._workspace_root.short_path,
+            "[[output_relative_path]]": ctx.attr.output,
+        },
+        template = ctx.file._script_tmpl,
+    )
+    runfiles = [
+        ctx.file.image_list,
+        ctx.file._workspace_root,
+        ctx.executable._docker,
+    ]
+    return [DefaultInfo(
+        executable = script,
+        runfiles = ctx.runfiles(files = runfiles),
+    )]
+
+image_cache_generator = rule(
+    implementation = _image_cache_generator_impl,
+    attrs = {
+        "image_list": attr.label(
+            allow_single_file = True,
+            doc = "The JSON file containing the KubeCF image list",
+            mandatory = True,
+        ),
+        "output": attr.string(
+            doc = "The relative path for the file to be written in the workspace",
+            mandatory = True,
+        ),
+        "_docker": attr.label(
+            allow_single_file = True,
+            cfg = "host",
+            default = "@docker//:binary",
+            executable = True,
+        ),
+        "_workspace_root": attr.label(
+            allow_single_file = True,
+            default = "@workspace_root//:path",
+            doc = "A file containing the absolute path to the workspace root",
+        ),
+        "_script_tmpl": attr.label(
+            allow_single_file = True,
+            default = "//rules/kubecf:image_cache_generator.tmpl.rb",
+        ),
+    },
+    executable = True,
+)

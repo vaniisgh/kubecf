@@ -23,12 +23,14 @@ project = struct(
         ),
         "docker": struct(
             sha256 = {
-                "linux":   "50cdf38749642ec43d6ac50f4a3f1f7f6ac688e8d8b4e1c5b7be06e1a82f06e9",
+                "darwin": "fe65c0039959b9ca326471427f26b1fcbd7b45079fe6e773c987c4fbbf87be71",
+                "linux": "7f4115dc6a3c19c917f8b9664d7b51c904def1c984e082c4600097433323cf6f",
             },
             url = {
-                "linux":   "https://download.docker.com/linux/static/stable/x86_64/docker-{version}.tgz",
+                "darwin": "https://download.docker.com/mac/static/stable/x86_64/docker-{version}.tgz",
+                "linux": "https://download.docker.com/linux/static/stable/x86_64/docker-{version}.tgz",
             },
-            version = "19.03.5",
+            version = "19.03.8",
         ),
         "helm": struct(
             sha256 = {
