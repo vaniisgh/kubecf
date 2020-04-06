@@ -6,4 +6,5 @@ workspace=$(bazel info workspace)
 
 # shellcheck disable=SC2046
 # We want word splitting with find.
-bazel run @shellcheck//:binary -- $(find "${workspace}" -name '*.sh')
+# Ignore all submodule files under src/.
+bazel run @shellcheck//:binary -- $(find "${workspace}" -name src -prune -o -name '*.sh' -print)
