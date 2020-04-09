@@ -12,11 +12,9 @@ which go deeper into the details of each aspect.
   - [Deployment](#deployment)
   - [Pull Requests](#pull-requests)
   - [Source Organization](#source-organization)
-  - [Docker Images](#docker-images)
   - [Linting](#linting)
   - [Patching](#patching)
   - [BOSH Development Workflow]
-  - [Rotating secrets](#rotating-secrets)
 
 ## Deployment
 
@@ -55,9 +53,6 @@ features, etc. is:
   - Developers will review the content of the pull request, asking
     questions, requesting changes, and generally discussing the
     submission with the submitter and among themselves.
-
-  - PRs from branches of this repository are automatically tested [in the CI](https://concourse.suse.dev/teams/main/pipelines/kubecf).
-    For forks, you should ask a maintainer of this repository to trigger a build. Automated triggers have been disabled for security reasons.
 
   - After all issues with the request are resolved, and CI has passed,
     a developer will merge it into master.
@@ -100,33 +95,20 @@ associated documentation, if we have any.
 |__top__/rules                                                          |Supporting bazel definitions.                          |
 |[__top__/testing](tests.md)                                            |Bazel targets to run CF smoke and acceptance tests.    |
 
-## Docker Images
-
-The docker images used by kubecf to run jobs in container use a
-moderately complex naming scheme.
-
-This scheme is explained in a separate document:
-[The Naming Of Docker Images in kubecf](dev/image-naming.md).
-
 ## Linting
 
-Currently, 3 linters are available:
+Currently only one linter is available:
 
   - `dev/linters/shellcheck.sh`
-  - `dev/linters/yamllint.sh`
-  - `dev/linters/helmlint.sh`
 
-Invoke these linters as
+Invoke this linter as
 
 ```sh
 dev/linters/shellcheck.sh
-dev/linters/yamllint.sh
-dev/linters/helmlint.sh
 ```
 
-to run shellcheck on all `.sh` files found in the entire checkout, or yamllint
-on all `.yaml` or `.yml` files respectively, and report any issues found.  The
-last option runs `helm lint` (without `--strict`) on the generated helm chart.
+to run shellcheck on all `.sh` files found in the entire checkout and
+report any issues found.
 
 ## Patching
 
@@ -269,20 +251,3 @@ without changing the result.
 
 The existing patch scripts do this by checking if the patch is already
 applied before attempting to apply it for real.
-
-## Rotating Secrets
-
-__Rotating secrets__ is in general the process of updating one or more
-secrets to new values and restarting all affected pods so that they
-will use these new values.
-
-Most of the process is automatic. How to trigger it is explained
-in [General Secret Rotation](secret_rotation_general.md).
-
-Beyond this, the keys used to encrypt the Cloud Controller Database
-(CCDB) can also be rotated, however, they do not exist as general
-secrets of the KubeCF deployment. This means that the general process
-explained above __does not apply__ to them.
-
-Their custom process is explained in
-[Rotating the CCDB encryption keys](secret_rotation.md).

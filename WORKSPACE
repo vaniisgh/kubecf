@@ -1,53 +1,97 @@
 workspace(name = "kubecf")
 
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
+load("//dev/minikube:binary.bzl", "minikube_binary")
+load("//rules/external_binary:def.bzl", "external_binary")
+load("//rules/helm:binary.bzl", "helm_binary")
 load(":def.bzl", "project")
 
-local_repository(
-    name = "workspace_status",
-    path = "rules/workspace_status",
+external_binary(
+    name = "shellcheck",
+    darwin = project.shellcheck.platforms.darwin,
+    linux = project.shellcheck.platforms.linux,
+    windows = project.shellcheck.platforms.windows,
 )
 
-local_repository(
-    name = "external_binaries",
-    path = "rules/external_binaries",
+http_archive(
+    name = "cf_deployment",
+    build_file_content = """
+package(default_visibility = ["//visibility:public"])
+filegroup(
+    name = "cf_deployment",
+    srcs = [
+        "cf-deployment.yml",
+        "operations/bits-service/use-bits-service.yml",
+        "operations/use-external-blobstore.yml",
+        "operations/use-s3-blobstore.yml",
+        "operations/bits-service/configure-bits-service-s3.yml"
+    ],
+)
+""",
+    sha256 = project.cf_deployment.sha256,
+    strip_prefix = "cf-deployment-{}".format(project.cf_deployment.version),
+    url = "https://github.com/cloudfoundry/cf-deployment/archive/v{}.tar.gz".format(project.cf_deployment.version),
 )
 
-load("@external_binaries//:def.bzl", "external_binary")
-
-[external_binary(
-    name = name,
-    config = config,
-) for name, config in project.external_binaries.items()]
-
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
-
-[http_archive(
-    name = name,
-    sha256 = config.sha256,
-    urls = [u.format(version = config.version) for u in config.urls],
-    strip_prefix = getattr(config, "strip_prefix", "").format(version = config.version),
-    build_file_content = getattr(config, "build_file_content", None),
-) for name, config in project.bazel_libs.items()]
-
-[http_file(
-    name = name,
-    urls = [u.format(version = getattr(config, "version", "")) for u in config.urls],
-    sha256 = config.sha256,
-) for name, config in project.external_files.items()]
-
-load("@rules_python//python:pip.bzl", "pip_repositories", "pip3_import")
-
-pip_repositories()
-
-pip3_import(
-    name = "yamllint",
-    requirements = "//dev/linters/yamllint:requirements.txt",
+http_file(
+    name = "cf_operator",
+    sha256 = project.cf_operator.chart.sha256,
+    urls = [project.cf_operator.chart.url],
 )
 
-load("@yamllint//:requirements.bzl", "pip_install")
+helm_binary(
+    name = "helm",
+    platforms = project.helm.platforms,
+    version = project.helm.version,
+)
 
-pip_install()
+external_binary(
+    name = "kubectl",
+    darwin = project.kubernetes.kubectl.platforms.darwin,
+    linux = project.kubernetes.kubectl.platforms.linux,
+    windows = project.kubernetes.kubectl.platforms.windows,
+)
 
-load("@rules_gomplate//:repositories.bzl", "gomplate_repositories")
+minikube_binary(
+    name = "minikube",
+    platforms = project.minikube.platforms,
+    version = project.minikube.version,
+)
 
-gomplate_repositories()
+external_binary(
+    name = "kind",
+    darwin = project.kind.platforms.darwin,
+    linux = project.kind.platforms.linux,
+    windows = project.kind.platforms.windows,
+)
+
+external_binary(
+    name = "k3s",
+    linux = project.k3s,
+)
+
+http_file(
+    name = "local_path_provisioner",
+    sha256 = project.local_path_provisioner.sha256,
+    urls = [project.local_path_provisioner.url],
+)
+
+http_archive(
+    name = "bazel_skylib",
+    sha256 = project.skylib.sha256,
+    url = "https://github.com/bazelbuild/bazel-skylib/releases/download/{version}/bazel-skylib.{version}.tar.gz".format(version = project.skylib.version),
+)
+
+http_archive(
+    name = "com_github_kubernetes_incubator_metrics_server",
+    build_file_content = """
+package(default_visibility = ["//visibility:public"])
+filegroup(
+    name = "deploy",
+    srcs = glob(["deploy/1.8+/**/*"]),
+)
+""",
+    sha256 = project.metrics_server.sha256,
+    strip_prefix = "metrics-server-{}".format(project.metrics_server.version),
+    url = "https://github.com/kubernetes-incubator/metrics-server/archive/v{}.tar.gz".format(project.metrics_server.version),
+)

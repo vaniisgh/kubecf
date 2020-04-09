@@ -3,18 +3,19 @@
 set -o errexit -o nounset
 
 target="/var/vcap/all-releases/jobs-src/diego/bbs/templates/bbs.json.erb"
-sentinel="${target}.patch_sentinel"
-if [[ -f "${sentinel}" ]]; then
-  echo "Patch already applied. Skipping"
-  exit 0
-fi
 
 # Advertise our spec address.
-patch --verbose "${target}" <<'EOT'
+PATCH=$(cat <<'EOT'
 62c62
 <     "#{scheme}://#{name.gsub('_', '-')}-#{spec.index}.#{base}:#{port}"
 ---
 >     "#{scheme}://#{spec.address}:#{port}"
 EOT
+)
 
-touch "${sentinel}"
+# Only patch once
+if ! patch --reverse --dry-run -f "${target}" <<<"$PATCH" 2>&1  >/dev/null ; then
+  patch --verbose "${target}" <<<"$PATCH"
+else
+  echo "Patch already applied. Skipping"
+fi

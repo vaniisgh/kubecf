@@ -62,19 +62,26 @@
     ports:
     - name: cell-bbs-api
       protocol: TCP
-      internal: 8889 # If you change this values, change the probe below too
-    activePassiveProbes:
-      bbs-bbs:
+      internal: 8889
+    run:
+      healthcheck:
+        bbs:
+          readiness:
+            httpGet:
+              port: 8890
+    post_start:
+      condition:
         exec:
           command:
-          - bash
-          - -ce
-          - "head -c0 </dev/tcp/${HOSTNAME}/8889"
+          - sh
+          - -c
+          - ss -nlt sport = 8889 | grep "LISTEN.*:8889"
+
 - type: replace
   path: /instance_groups/name=diego-api/jobs/name=cfdot/properties/quarks?/bpm/processes
   value: []
 
-{{- $root := . }}
+{{- $root := . -}}
 {{- range $path, $bytes := .Files.Glob "assets/operations/pre_render_scripts/diego-api_*" }}
 {{ $root.Files.Get $path }}
 {{- end }}

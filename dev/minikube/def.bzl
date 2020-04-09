@@ -12,7 +12,7 @@ def _minikube_start_impl(ctx):
         export ISO_URL="${{ISO_URL:-{iso_url}}}"
         "{script}"
     """.format(
-        minikube = ctx.executable._minikube.short_path,
+        minikube = ctx.executable._minikube.path,
         k8s_version = ctx.attr.k8s_version,
         vm_cpus = ctx.attr.vm_cpus,
         vm_memory = ctx.attr.vm_memory,
@@ -44,7 +44,7 @@ attrs = {
         default = "120g",
     ),
     "iso_url": attr.string(
-        default = "https://github.com/f0rmiga/opensuse-minikube-image/releases/download/v0.1.6/minikube-openSUSE.x86_64-0.1.6.iso",
+        default = "https://github.com/f0rmiga/opensuse-minikube-image/releases/download/v0.1.4/minikube-openSUSE.x86_64-0.1.4.iso",
     ),
     "_minikube": attr.label(
         allow_single_file = True,
@@ -54,7 +54,7 @@ attrs = {
     ),
 }
 
-start_binary = rule(
+minikube_start_binary = rule(
     implementation = _minikube_start_impl,
     attrs = dict({
         "_script": attr.label(
@@ -67,7 +67,7 @@ start_binary = rule(
     executable = True,
 )
 
-delete_binary = rule(
+minikube_delete_binary = rule(
     implementation = _minikube_start_impl,
     attrs = dict({
         "_script": attr.label(

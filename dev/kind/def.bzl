@@ -1,5 +1,4 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("//:def.bzl", "project")
 
 def _kind_impl(ctx):
     metrics_server_dir = None
@@ -18,23 +17,13 @@ def _kind_impl(ctx):
         export KIND="{kind}"
         export CLUSTER_NAME="{cluster_name}"
         export KUBECTL="{kubectl}"
-        export KIND_CONFIG="{kind_config}"
         export METRICS_SERVER="{metrics_server}"
-        export K8S_VERSION="${{K8S_VERSION:-{k8s_version}}}"
-        export LOCAL_PATH_STORAGE_YAML="{local_path_storage_yaml}"
-        export KUBE_DASHBOARD_YAML="{kube_dashboard}"
-        export WEAVE_CONTAINER_NETWORK_PLUGIN="{weave_container_network_plugin}"
         "{script}"
     """.format(
-        kind = ctx.executable._kind.short_path,
+        kind = ctx.executable._kind.path,
         cluster_name = ctx.attr.cluster_name,
-        kubectl = ctx.executable._kubectl.short_path,
-        kind_config = ctx.file._kind_config.short_path,
+        kubectl = ctx.executable._kubectl.path,
         metrics_server = metrics_server_dir,
-        k8s_version = ctx.attr.k8s_version,
-        local_path_storage_yaml = ctx.file._local_path_storage_yaml.short_path,
-        kube_dashboard = ctx.file._kube_dashboard.short_path,
-        weave_container_network_plugin = ctx.file._weave_container_network_plugin.short_path,
         script = ctx.executable._script.path,
     )
     ctx.actions.write(executable, contents, is_executable = True)
@@ -42,10 +31,6 @@ def _kind_impl(ctx):
         ctx.executable._kind,
         ctx.executable._kubectl,
         ctx.executable._script,
-        ctx.file._kind_config,
-        ctx.file._local_path_storage_yaml,
-        ctx.file._kube_dashboard,
-        ctx.file._weave_container_network_plugin,
     ] + ctx.files._metrics_server
     return [DefaultInfo(
         executable = executable,
@@ -56,40 +41,21 @@ attrs = {
     "cluster_name": attr.string(
         mandatory = True,
     ),
-    "k8s_version": attr.string(
-        default = "v{}".format(project.kubernetes.version),
-    ),
     "_kind": attr.label(
         allow_single_file = True,
         cfg = "host",
-        default = "@kind//:binary",
+        default = "@kind//kind",
         executable = True,
     ),
     "_kubectl": attr.label(
         allow_single_file = True,
         cfg = "host",
-        default = "@kubectl//:binary",
+        default = "@kubectl//kubectl",
         executable = True,
-    ),
-    "_kind_config": attr.label(
-        default = "//dev/kind:config.yaml",
-        allow_single_file = True,
     ),
     "_metrics_server": attr.label(
         default = "@com_github_kubernetes_incubator_metrics_server//:deploy",
         allow_files = True,
-    ),
-    "_local_path_storage_yaml": attr.label(
-        default = "@local_path_provisioner//file",
-        allow_single_file = True,
-    ),
-    "_kube_dashboard": attr.label(
-        default = "@kube_dashboard//file",
-        allow_single_file = True,
-    ),
-    "_weave_container_network_plugin": attr.label(
-        default = "@weave_container_network_plugin//file",
-        allow_single_file = True,
     ),
 }
 

@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 
-set -o errexit -o nounset
-
-workspace=$(bazel info workspace)
+set -o errexit
 
 # shellcheck disable=SC2046
 # We want word splitting with find.
-bazel run @shellcheck//:binary -- $(find "${workspace}" -name '*.sh')
+bazel run @shellcheck//shellcheck -- $(find . -name '*.sh')

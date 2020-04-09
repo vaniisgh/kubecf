@@ -3,14 +3,9 @@
 set -o errexit -o nounset
 
 target="/var/vcap/all-releases/jobs-src/cflinuxfs3/cflinuxfs3-rootfs-setup/templates/pre-start"
-sentinel="${target}.patch_sentinel"
-if [[ -f "${sentinel}" ]]; then
-  echo "Patch already applied. Skipping"
-  exit 0
-fi
 
 # Use the ephemeral data directory for the rootfs
-patch --verbose "${target}" <<'EOT'
+PATCH=$(cat <<'EOT'
 @@ -3,8 +3,8 @@
 
  CONF_DIR=/var/vcap/jobs/cflinuxfs3-rootfs-setup/config
@@ -22,5 +17,11 @@ patch --verbose "${target}" <<'EOT'
  TRUSTED_CERT_FILE=$CONF_DIR/certs/trusted_ca.crt
  CA_DIR=$ROOTFS_DIR/usr/local/share/ca-certificates/
 EOT
+)
 
-touch "${sentinel}"
+# Only patch once
+if ! patch --reverse --dry-run -f "${target}" <<<"$PATCH" 2>&1  >/dev/null ; then
+  patch --verbose "${target}" <<<"$PATCH"
+else
+  echo "Patch already applied. Skipping"
+fi

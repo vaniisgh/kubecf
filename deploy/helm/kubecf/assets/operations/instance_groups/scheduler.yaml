@@ -1,10 +1,34 @@
+# Override the addresses for the jobs under the scheduler instance group.
+- type: replace
+  path: /instance_groups/name=scheduler/jobs/name=cc_deployment_updater/properties/ccdb/address?
+  value: sql-db.service.cf.internal
+- type: replace
+  path: /instance_groups/name=scheduler/jobs/name=cloud_controller_clock/properties/ccdb/address
+  value: sql-db.service.cf.internal
+
 # Add quarks properties for the scheduler job.
 - type: replace
   path: /instance_groups/name=scheduler/jobs/name=scheduler/properties/quarks?/run/healthcheck/scheduler
   value:
     readiness:
       exec:
-        command: ["curl", "--fail", "--head", "--silent", "http://127.0.0.1:8080/health"]
+        command: [curl, --fail, --head, --silent, http://127.0.0.1:8080/health]
+
+# Add quarks properties for the auctioneer job.
+- type: replace
+  path: /instance_groups/name=scheduler/jobs/name=auctioneer/properties/quarks?
+  value:
+    ports:
+    - name: auctioneer
+      protocol: TCP
+      internal: 9016
+    run:
+      healthcheck:
+        auctioneer:
+          readiness:
+            # There is no health check, just depend on the port being open
+            tcpSocket:
+              port: 9016
 
 - type: replace
   path: /instance_groups/name=scheduler/jobs/name=cloud_controller_clock/properties/quarks?/run/healthcheck/cloud_controller_clock
@@ -12,7 +36,7 @@
     readiness:
       # There is no good readiness check for the scheduled tasks
       exec:
-        command: ["pgrep", "--full", "clock:start"]
+        command: [pgrep, --full, clock:start]
 
 - type: replace
   path: /instance_groups/name=scheduler/jobs/name=cc_deployment_updater/properties/quarks?/run/healthcheck/cc_deployment_updater
@@ -26,17 +50,15 @@
         - tac /var/vcap/sys/log/cc_deployment_updater/cc_deployment_updater.log | grep --max-count=1 Sleeping | jq -r '(now - .timestamp) < 10'
     liveness:
       exec:
-        command: ["pgrep", "--full", "deployment_updater:start"]
+        command: [pgrep, --full, deployment_updater:start]
 
 - type: replace
   path: /instance_groups/name=scheduler/jobs/name=statsd_injector/properties/quarks?/run/healthcheck/statsd_injector/readiness/exec/command
-  value: ["/bin/sh", "-c", "ss -nlu src localhost:8125 | grep :8125"]
-
-{{- if not .Values.features.eirini.enabled }}
+  value: [/bin/sh, -c, ss -nlu src localhost:8125 | grep :8125]
 
 - type: replace
   path: /instance_groups/name=scheduler/jobs/name=tps/properties/quarks?/run/healthcheck/watcher/readiness/exec/command
-  value: ["curl", "--fail", "--silent", "http://127.0.0.1:17015/debug/pprof/cmdline"]
+  value: [curl, --fail, --silent, http://127.0.0.1:17015/debug/pprof/cmdline]
 
 # Add quarks properties for the ssh_proxy job.
 - type: replace
@@ -56,28 +78,32 @@
             httpGet:
               port: 2223
 
-# Add necessary labels to the scheduler instance group so that the service can select it to create
-# the endpoint.
 - type: replace
-  path: /instance_groups/name=scheduler/env?/bosh/agent/settings/labels/app.kubernetes.io~1component
-  value: "ssh-proxy"
-- type: replace
-  path: /instance_groups/name=scheduler/env?/bosh/agent/settings/labels/app.kubernetes.io~1instance
-  value: {{ .Release.Name | quote }}
-- type: replace
-  path: /instance_groups/name=scheduler/env?/bosh/agent/settings/labels/app.kubernetes.io~1version
-  value: {{ default .Chart.Version .Chart.AppVersion | quote }}
-{{- end }}
+  path: /instance_groups/name=scheduler/jobs/name=log-cache-scheduler/properties?/quarks/run/healthcheck/log-cache-scheduler/readiness/exec/command
+  value: [curl, --fail, --silent, http://localhost:6064/debug/pprof/cmdline]
 
 - type: replace
   path: /instance_groups/name=scheduler/jobs/name=cfdot/properties/quarks?/bpm/processes
   value: []
 
-{{- if not .Values.features.eirini.enabled }}
+- type: replace
+  path: /instance_groups/name=scheduler/jobs/name=log-cache-expvar-forwarder/properties/quarks?/envs
+  value:
+  - name: INSTANCE_ADDR
+    value: {{ .Values.deployment_name }}-scheduler:8080
+  - name: INSTANCE_ID
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.labels['quarks.cloudfoundry.org/pod-ordinal']
 
-{{- $root := . }}
-{{- range $path, $bytes := .Files.Glob "assets/operations/pre_render_scripts/scheduler_*" }}
-{{ $root.Files.Get $path }}
-{{- end }}
+- type: replace
+  path: /instance_groups/name=scheduler/jobs/name=log-cache-expvar-forwarder/properties/quarks?/run/healthcheck/log-cache-expvar-forwarder
+  value:
+    readiness: ~
+      # We do not have a good thing to use as a readiness probe
 
-{{- end }}{{/* scheduler scripts, only if not eirini */}}
+- type: replace
+  path: /instance_groups/name=scheduler/jobs/name=log-cache-expvar-forwarder/provides?
+  value:
+    log-cache-expvar-forwarder: {as: this_is_not_used}

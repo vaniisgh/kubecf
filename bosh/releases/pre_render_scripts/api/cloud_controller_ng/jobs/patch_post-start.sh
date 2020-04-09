@@ -3,14 +3,9 @@
 set -o errexit -o nounset
 
 target="/var/vcap/all-releases/jobs-src/capi/cloud_controller_ng/templates/post-start.sh.erb"
-sentinel="${target}.patch_sentinel"
-if [[ -f "${sentinel}" ]]; then
-  echo "Patch already applied. Skipping"
-  exit 0
-fi
 
 # chown the cc log so that the vcap user can write to it from the post-start script.
-patch --verbose "${target}" <<'EOT'
+PATCH=$(cat <<'EOT'
 @@ -61,6 +61,7 @@
  }
 
@@ -20,5 +15,11 @@ patch --verbose "${target}" <<'EOT'
    fix_bundler_home_permissions
  }
 EOT
+)
 
-touch "${sentinel}"
+# Only patch once
+if ! patch --reverse --dry-run -f "${target}" <<<"$PATCH" 2>&1  >/dev/null ; then
+  patch --verbose "${target}" <<<"$PATCH"
+else
+  echo "Patch already applied. Skipping"
+fi

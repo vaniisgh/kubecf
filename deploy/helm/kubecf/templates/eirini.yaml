@@ -1,45 +1,16 @@
-{{- if .Values.features.eirini.enabled }}
-
-{{- $deployment := include "kubecf.deployment-name" . }}
-
-# eirini-webhook cluster role for eirini service account.
-# Used to implement eirinix extensions.
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: {{ .Release.Namespace }}:eirini-webhook
-rules:
-- apiGroups: ['admissionregistration.k8s.io']
-  resources: ['mutatingwebhookconfigurations']
-  verbs:     ['*']
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: {{ .Release.Namespace }}:eirini-webhook
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: {{ .Release.Namespace }}:eirini-webhook
-subjects:
-- kind: ServiceAccount
-  name: eirini
-  namespace: {{ .Release.Namespace }}
+{{- if .Values.features.eirini.enabled -}}
 
 # A service for the cc uploader
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: cc-uploader
-  namespace: {{ .Release.Namespace | quote }}
+  name: {{ .Values.deployment_name }}-cc-uploader
 spec:
   type: ClusterIP
   selector:
     quarks.cloudfoundry.org/instance-group-name: api
-    quarks.cloudfoundry.org/deployment-name: {{ $deployment }}
+    quarks.cloudfoundry.org/deployment-name: {{ .Values.deployment_name }}
   ports:
     - protocol: TCP
       name: "http"
@@ -54,128 +25,74 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: eirini-registry
-  namespace: {{ .Release.Namespace | quote }}
+  name: {{ .Values.deployment_name }}-eirini-registry
 spec:
   type: NodePort
   selector:
     quarks.cloudfoundry.org/instance-group-name: bits
-    quarks.cloudfoundry.org/deployment-name: {{ $deployment }}
+    quarks.cloudfoundry.org/deployment-name: {{ .Values.deployment_name }}
   ports:
     - protocol: TCP
       port: 443
       targetPort: 443
       nodePort: {{ .Values.features.eirini.registry.service.nodePort }}
-# A service for eirini-ssh
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: eirini-ssh
-  namespace: {{ .Release.Namespace | quote }}
-spec:
-  type: ClusterIP
-  selector:
-    quarks.cloudfoundry.org/instance-group-name: eirini
-    quarks.cloudfoundry.org/deployment-name: {{ $deployment }}
-  ports:
-    - protocol: TCP
-      name: "https"
-      port: 443
-      targetPort: 2999
-# A service for eirini-persi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: eirini-persi
-  namespace: {{ .Release.Namespace | quote }}
-spec:
-  type: ClusterIP
-  selector:
-    quarks.cloudfoundry.org/instance-group-name: eirini
-    quarks.cloudfoundry.org/deployment-name: {{ $deployment }}
-  ports:
-    - protocol: TCP
-      name: "https"
-      port: 443
-      targetPort: 8443
-# A service for eirini-persi-broker
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: eirini-persi-broker
-  namespace: {{ .Release.Namespace | quote }}
-spec:
-  type: ClusterIP
-  selector:
-    quarks.cloudfoundry.org/instance-group-name: eirini
-    quarks.cloudfoundry.org/deployment-name: {{ $deployment }}
-  ports:
-    - protocol: TCP
-      name: "http"
-      port: 8999
-      targetPort: 8999
 ---
 # A namespace where eirini apps are created
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ .Release.Namespace }}-eirini
+  name: {{ .Values.deployment_name }}-eirini
 ---
+# A godlike ServiceAccount for Eirini
+# TODO: this can be restricted
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: eirini
+  name: {{ .Values.deployment_name }}-eirini
   namespace: {{ .Release.Namespace | quote }}
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: eirini:all
-  namespace: {{ .Release.Namespace }}-eirini
-rules:
-  - apiGroups: ['*']
-    resources: ['*']
-    verbs:     ['*']
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: eirini:all
-  namespace: {{ .Release.Namespace }}-eirini
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: eirini:all
-subjects:
-  - kind: ServiceAccount
-    name: eirini
-    namespace: {{ .Release.Namespace | quote }}
-
----
-# ClusterRole to allow opi to list nodes
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: {{ .Release.Namespace }}:eirini-opi
-rules:
-- apiGroups: ['']
-  resources: ['nodes']
-  verbs:     ['*']
----
+# A godlike Role for Eirini
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ .Release.Namespace }}:eirini-opi
+  name: {{ .Values.deployment_name }}-eirini
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ .Release.Namespace }}:eirini-opi
+  name: cluster-admin
 subjects:
-- kind: ServiceAccount
-  name: eirini
-  namespace: {{ .Release.Namespace }}
+  - kind: ServiceAccount
+    name: {{ .Values.deployment_name }}-eirini
+    namespace: {{ .Release.Namespace | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ops-remove-diego
+  labels:
+    app.kubernetes.io/component: operations
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+    app.kubernetes.io/name: {{ include "kubecf.fullname" . }}
+    app.kubernetes.io/version: {{ default .Chart.Version .Chart.AppVersion | quote }}
+    helm.sh/chart: {{ include "kubecf.chart" . }}
+data:
+  ops: |
+    # Remove the whole diego-cell instance group.
+    - type: remove
+      path: /instance_groups/name=diego-cell
+
+    # Remove bbs and silk-controller from diego-api.
+    # TODO: remove bbs in the future - when the clock and worker no longer need it.
+    # - type: remove
+    #   path: /instance_groups/name=diego-api/jobs/name=bbs
+
+    # Remove auctioneer, tps and ssh_proxy from scheduler.
+    - type: remove
+      path: /instance_groups/name=scheduler/jobs/name=auctioneer
+    - type: remove
+      path: /instance_groups/name=scheduler/jobs/name=tps
+    - type: remove
+      path: /instance_groups/name=scheduler/jobs/name=ssh_proxy
 
 {{- end }}

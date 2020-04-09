@@ -3,14 +3,9 @@
 set -o errexit -o nounset
 
 target="/var/vcap/all-releases/jobs-src/eirini/eirini-loggregator-bridge/templates/bpm.yml.erb"
-sentinel="${target}.patch_sentinel"
-if [[ -f "${sentinel}" ]]; then
-  echo "Patch already applied. Skipping"
-  exit 0
-fi
 
 # Patch BPM, since we're actually running in-cluster without BPM
-patch --verbose "${target}" <<'EOT'
+PATCH=$(cat <<'EOT'
 @@ -8,17 +8,3 @@
        - "--kubeconfig"
        - "<%= kubeconfig %>"
@@ -30,5 +25,11 @@ patch --verbose "${target}" <<'EOT'
 -      mount_only: true
 -    <% end %>
 EOT
+)
 
-touch "${sentinel}"
+# Only patch once
+if ! patch --reverse --dry-run -f "${target}" <<<"$PATCH" 2>&1  >/dev/null ; then
+  patch --verbose "${target}" <<<"$PATCH"
+else
+  echo "Patch already applied. skipping"
+fi

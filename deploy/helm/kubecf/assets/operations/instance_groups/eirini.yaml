@@ -1,4 +1,4 @@
-{{- if .Values.features.eirini.enabled }}
+{{- if .Values.features.eirini.enabled -}}
 
 # Add the eirini BOSH DNS alias.
 - type: replace
@@ -24,7 +24,7 @@
       bosh:
         agent:
           settings:
-            serviceAccountName: eirini
+            serviceAccountName: {{ .Values.deployment_name }}-eirini
             disable_log_sidecar: true
     jobs:
     - name: configure-eirini-scf
@@ -45,7 +45,7 @@
               server_key: "((cc_bridge_cc_uploader_server.private_key))"
         opi:
           registry_address: 127.0.0.1:{{ .Values.features.eirini.registry.service.nodePort }}
-          kube_namespace: {{ .Release.Namespace }}-eirini
+          kube_namespace: {{ .Values.deployment_name }}-eirini
           certs_secret_name: eirini-staging-secret
           cc_cert: ((cc_bridge_tps.certificate))
           cc_key: ((cc_bridge_tps.private_key))
@@ -69,67 +69,22 @@
       bosh:
         agent:
           settings:
-            serviceAccountName: eirini
+            serviceAccountName: {{ .Values.deployment_name }}-eirini
     jobs:
-    - name: eirini-persi-broker
-      release: eirini
-      properties:
-        eirini-persi-broker:
-          namespace: {{ .Release.Namespace }}-eirini
-          backend_host: "0.0.0.0"
-          backend_port: 8999
-          auth_password: ((eirini_persi_broker_auth_password))
-    - name: eirini-persi
-      release: eirini
-      properties:
-        eirini-persi:
-          namespace: {{ .Release.Namespace }}-eirini
-          operator_webhook_host: "0.0.0.0"
-          operator_webhook_port: 8443
-          operator_webhook_servicename: eirini-persi
-          operator_webhook_namespace: {{ .Release.Namespace }}
-    - name: eirini-ssh-proxy
-      release: eirini
-      properties:
-        eirini-ssh-proxy:
-          api_url: "https://cloud-controller-ng.service.cf.internal:9024"
-          port: "2222"
-          host_key: '((eirini_ssh_proxy_key.private_key))'
-          kube_namespace: {{ .Release.Namespace }}-eirini
-          sshd_port: 2222
-          ssl:
-            skip_cert_verify: false
-          cc:
-            ca_cert: "((cc_tls.ca))"
-          uaa:
-            ca_cert: '((uaa_ssl.ca))'
-        uaa:
-          clients:
-            ssh-proxy:
-              secret: '((uaa_clients_ssh-proxy_secret))'
-          url: "https://uaa.service.cf.internal:8443"
-    - name: eirini-ssh-extension
-      release: eirini
-      properties:
-        eirini-ssh-extension:
-          namespace: {{ .Release.Namespace }}-eirini
-          operator_webhook_host: "0.0.0.0"
-          operator_webhook_port: 2999
-          operator_webhook_servicename: eirini-ssh
-          operator_webhook_namespace: {{ .Release.Namespace }}
     - name: eirini-loggregator-bridge
       release: eirini
       properties:
         quarks:
           envs:
+          # TODO: this isn't working for some reason - the env var is not present in the pod.
           - name: EIRINI_LOGGREGATOR_BRIDGE_LOGLEVEL
-            value: WARN
+            value: debug
         eirini-loggregator-bridge:
           loggregator_ca: '((loggregator_ca.certificate))'
           loggregator_cert: '((loggregator_tls_agent.certificate))'
           loggregator_key: '((loggregator_tls_agent.private_key))'
           loggregator_endpoint: "doppler.service.cf.internal:8082"
-          namespace: '{{ .Release.Namespace }}-eirini'
+          namespace: '{{ .Values.deployment_name }}-eirini'
     - name: opi
       release: eirini
       properties:
@@ -137,7 +92,7 @@
           server_cert: ((eirini_tls_server_cert.certificate))
           server_key: ((eirini_tls_server_cert.private_key))
           client_ca: ((service_cf_internal_ca.certificate))
-          kube_namespace: {{ .Release.Namespace }}-eirini
+          kube_namespace: {{ .Values.deployment_name }}-eirini
           kube_service_host: ""
           kube_service_port: ""
           registry_address: 127.0.0.1:{{ .Values.features.eirini.registry.service.nodePort }}
@@ -147,10 +102,10 @@
           nats_ip: nats.service.cf.internal
           certs_secret_name: eirini-staging-secret
           cc_internal_api: https://cloud-controller-ng.service.cf.internal:9023
-          eirini_address: {{ printf "https://eirini.%s:8484" .Release.Namespace }}
-          downloader_image: "eirini/recipe-downloader@sha256:80c213363762d3171fe401c331c480f0e8eb34fe781798eda95de1e7427b2771"
-          uploader_image: "eirini/recipe-uploader@sha256:cb70f76035866bf280e710247751f2f620c4c6e6e6950a6e730bde01535bebf1"
-          executor_image: "eirini/recipe-executor@sha256:c072f828b86766778d027041e394eaad9cfb55c3b5f652a50be8455d1dad3bf4"
+          eirini_address: https://{{ .Values.deployment_name }}-eirini.{{ .Release.Namespace }}:8484
+          downloader_image: "gcr.io/peripli/recipe-downloader:0.3.0-ca-fix"
+          uploader_image: "gcr.io/peripli/recipe-uploader:0.3.0-ca-fix"
+          executor_image: "gcr.io/peripli/recipe-executor:0.3.0-ca-fix"
           # TODO: make this configurable
           metrics_source_address: ""
           loggregator_address: localhost:3458
@@ -174,11 +129,19 @@
     name: eirinifs
     release: eirini
 
+- type: replace
+  path: /releases/-
+  value:
+    name: eirini
+    version: 0.0.22
+    url: {{ .Values.releases.defaults.url | quote }}
+    stemcell: {{ include "kubecf.stemcellLookup" (list .Values.releases "eirini") }}
+
 # Set the correct addresses to be reached by the Eirini apps namespace.
 {{- if eq .Values.features.blobstore.provider "singleton" }}
 - type: replace
   path: /instance_groups/name=api/jobs/name=cloud_controller_ng/properties/cc/buildpacks?/webdav_config/private_endpoint
-  value: &blobstore_url {{ printf "https://singleton-blobstore.%s:4443" .Release.Namespace }}
+  value: &blobstore_url "https://{{ .Values.deployment_name }}-singleton-blobstore.{{ .Release.Namespace }}:4443"
 - type: replace
   path: /instance_groups/name=api/jobs/name=cloud_controller_ng/properties/cc/droplets?/webdav_config/private_endpoint
   value: *blobstore_url
@@ -190,17 +153,17 @@
   value: *blobstore_url
 - type: replace
   path: /variables/name=blobstore_tls/options/alternative_names?/-
-  value: singleton-blobstore
+  value: "{{ .Values.deployment_name }}-singleton-blobstore"
 - type: replace
   path: /variables/name=blobstore_tls/options/alternative_names?/-
-  value: {{ printf "singleton-blobstore.%s" .Release.Namespace }}
+  value: "{{ .Values.deployment_name }}-singleton-blobstore.{{ .Release.Namespace }}"
 {{- end }}
 - type: replace
   path: /instance_groups/name=api/jobs/name=cc_uploader/properties/internal_hostname?
-  value: {{ printf "api.%s" .Release.Namespace }}
+  value: "{{ .Values.deployment_name }}-api.{{ .Release.Namespace }}"
 - type: replace
   path: /variables/name=cc_bridge_cc_uploader_server/options/alternative_names?/-
-  value: {{ printf "api.%s" .Release.Namespace }}
+  value: "{{ .Values.deployment_name }}-api.{{ .Release.Namespace }}"
 
 # Enable OPI in CC
 # cloud_controller_ng
@@ -270,10 +233,10 @@
     type: certificate
     options:
       ca: service_cf_internal_ca
-      common_name: eirini
+      common_name: "{{ .Values.deployment_name }}-eirini"
       alternative_names:
-      - eirini
-      - {{ printf "eirini.%s" .Release.Namespace }}
+      - "{{ .Values.deployment_name }}-eirini"
+      - "{{ .Values.deployment_name }}-eirini.{{ .Release.Namespace }}"
       - eirini.service.cf.internal
       extended_key_usage:
       - server_auth
@@ -287,16 +250,6 @@
       common_name: cloud_controller
       extended_key_usage:
       - client_auth
-- type: replace
-  path: /variables/name=eirini_persi_broker_auth_password?
-  value:
-    type: password
-    name: eirini_persi_broker_auth_password
-- type: replace
-  path: /variables/name=eirini_ssh_proxy_key?
-  value:
-    type: ssh
-    name: eirini_ssh_proxy_key
 
 - type: replace
   path: /instance_groups/name=bits/jobs/name=eirinifs/properties?/quarks?
@@ -309,44 +262,8 @@
   value:
     - localhost
     - metron
-- type: replace
-  path: /variables/name=loggregator_tls_doppler/options/alternative_names?/-
-  value: metron
 
-# Add necessary labels to the eirini instance group so that the service can select it to create the endpoint for ssh-proxy
-- type: replace
-  path: /instance_groups/name=eirini/env?/bosh/agent/settings/labels/app.kubernetes.io~1component
-  value: "ssh-proxy"
-- type: replace
-  path: /instance_groups/name=eirini/env?/bosh/agent/settings/labels/app.kubernetes.io~1instance
-  value: {{ .Release.Name | quote }}
-- type: replace
-  path: /instance_groups/name=eirini/env?/bosh/agent/settings/labels/app.kubernetes.io~1version
-  value: {{ default .Chart.Version .Chart.AppVersion | quote }}
-
-# Set the ssh-proxy key fingerprint
-- type: replace
-  path: /instance_groups/name=api/jobs/name=cloud_controller_ng/properties/app_ssh/host_key_fingerprint?
-  value: '((eirini_ssh_proxy_key.public_key_fingerprint))'
-
-# Remove the whole diego-cell instance group.
-- type: remove
-  path: /instance_groups/name=diego-cell
-
-# Remove bbs from diego-api.
-# TODO: remove bbs in the future - when the clock and worker no longer need it.
-# - type: remove
-#   path: /instance_groups/name=diego-api/jobs/name=bbs
-
-# Remove auctioneer, tps and ssh_proxy from scheduler.
-- type: remove
-  path: /instance_groups/name=auctioneer
-- type: remove
-  path: /instance_groups/name=scheduler/jobs/name=tps
-- type: remove
-  path: /instance_groups/name=scheduler/jobs/name=ssh_proxy
-
-{{- $root := . }}
+{{- $root := . -}}
 {{- range $path, $bytes := .Files.Glob "assets/operations/pre_render_scripts/eirini_*" }}
 {{ $root.Files.Get $path }}
 {{- end }}

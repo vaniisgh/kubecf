@@ -1,24 +1,25 @@
-load(
-    "//rules/helm:def.bzl",
-    helm_upgrade = "upgrade",
-    helm_delete = "delete",
-)
-load("//:def.bzl", "project")
-
 package(default_visibility = ["//visibility:public"])
 
-helm_upgrade(
-    name = "apply",
-    install = True,
-    install_name = project.deployment_name,
-    namespace = project.namespace,
-    chart_package = "//deploy/helm/kubecf",
+load("//rules/helm:def.bzl", helm_template = "template")
+load("//rules/kubectl:def.bzl", kubectl_apply_binary = "apply", kubectl_delete_binary = "delete")
+load("//:def.bzl", "project")
+
+helm_template(
+    name = "rendered_template",
     values = glob(["**/*values.yaml"]),
-    reset_values = True,
+    install_name = "kubecf",
+    namespace = project.namespace,
+    chart_package = "//deploy/helm/kubecf:chart",
 )
 
-helm_delete(
+kubectl_apply_binary(
+    name = "apply",
+    resource = ":rendered_template",
+    namespace = project.namespace,
+)
+
+kubectl_delete_binary(
     name = "delete",
-    install_name = project.deployment_name,
+    resource = ":rendered_template",
     namespace = project.namespace,
 )

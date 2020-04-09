@@ -1,5 +1,9 @@
-{{- if .Values.testing.cf_acceptance_tests.enabled }}
-
+- path: /releases/-
+  type: replace
+  value:
+    name: cf-acceptance-tests
+    url: {{ .Values.releases.defaults.url | quote }}
+    version: 0.0.3
 - path: /instance_groups/-
   type: replace
   value:
@@ -14,14 +18,7 @@
           admin_user: admin
           api: api.((system_domain))
           apps_domain: ((system_domain))
-          {{- if .Values.features.credhub.enabled }}
-          credhub_client: credhub_admin_client
-          credhub_mode: assisted
-          credhub_secret: ((credhub_admin_client_secret))
-          {{- end }}
-          include: '+tcp_routing'
           skip_ssl_validation: true
-          timeout_scale: 3
         bpm:
           enabled: true
       release: cf-acceptance-tests
@@ -33,5 +30,3 @@
     update:
       serial: true
     vm_type: minimal
-
-{{- end }}
